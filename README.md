@@ -2,12 +2,13 @@ This is a ROS 2 component that can be used to add a custom flight mode to a PX4 
 
 ## Requirements 
 - Ubuntu (22.04)
+- USE PX4 1.16, px4_msgs and px4_ros2_cpp must be on the 1.16 branch as well.
 - PX4 and ROS 2 installations as detailed by https://docs.px4.io/main/en/ros2/user_guide.html 
     - This involves setting up the PX4 toolchain, ROS 2, and the Micro XRCE-DDS Agent 
     - Tested on PX4 v1.15.0 and v1.15.4, ROS 2 Humble
     - If this is a first time setup, try at least one of the examples at the end of the installation guide above before moving on to confirm you have everything set up properly.
 - QGroundControl
-    - The most recent available releases (daily and V4.4.3 as of writing) do not support dynamically adding external flight modes that are visible in the flight modes drop down menu in QGC. However, building the Stable_V4.4 branch manually does support this. It doesn't matter for this example, however, since the flight mode will activate automatically.
+    - Works with the latest QGC daily 
 
 ## Setup
 1. Setup and build a new ROS workspace
