@@ -5,8 +5,6 @@ This is a ROS 2 component that can be used to add a custom flight mode to a PX4 
 - USE PX4 1.16, px4_msgs and px4_ros2_cpp must be on the 1.16 branch as well.
 - PX4 and ROS 2 installations as detailed by https://docs.px4.io/main/en/ros2/user_guide.html 
     - This involves setting up the PX4 toolchain, ROS 2, and the Micro XRCE-DDS Agent 
-    - Tested on PX4 v1.15.0 and v1.15.4, ROS 2 Humble
-    - If this is a first time setup, try at least one of the examples at the end of the installation guide above before moving on to confirm you have everything set up properly.
 - QGroundControl
     - Works with the latest QGC daily 
 
@@ -18,10 +16,10 @@ This is a ROS 2 component that can be used to add a custom flight mode to a PX4 
     cd custom_flightmode/src
 
     # Clone components
-    git clone --branch release/1.15 https://github.com/PX4/px4_msgs.git
-    git clone --recursive https://github.com/Auterion/px4-ros2-interface-lib.git
-    git clone https://github.com/godfreynolan/px4_ros2_custom_flight_mode.git
-
+    git clone --branch release/1.16 https://github.com/PX4/px4_msgs.git
+    git clone --branch release/1.16 https://github.com/Auterion/px4-ros2-interface-lib.git
+    git clone https://github.com/Undead-Reckoning/Hexcopter-ROS-Test.git
+    
     # Build the workspace and setup the shell to run ros commands later
     cd ..
     source /opt/ros/humble/setup.bash
@@ -36,8 +34,8 @@ This is a ROS 2 component that can be used to add a custom flight mode to a PX4 
     ```bash
     cd ~/PX4-Autopilot # Change this depending on where you installed PX4
     
-    # Ignore these 2 lines if you are already on the correct version of PX4
-    git checkout v1.15.4
+    # Ignore these 2 lines if you are already on the correct version of PX4 (1.16)
+    git checkout release/1.16
     git submodule update --init --recursive
 
     make px4_sitl gz_x500
