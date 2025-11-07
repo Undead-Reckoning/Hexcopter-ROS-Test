@@ -258,16 +258,13 @@ public:
   enum class State
   {
     Reset,
-    Arming,
-    TakingOff,
     DrawMode,
-    RTL,
     WaitUntilDisarmed,
   };
 
   void onActivate() override
   {
-    runState(State::Arming, px4_ros2::Result::Success);
+    runState(State::DrawMode, px4_ros2::Result::Success);
   }
 
   void onDeactivate(DeactivateReason reason) override
@@ -289,23 +286,12 @@ public:
       case State::Reset:
         break;
 
-      case State::Arming:
-        arm([this](px4_ros2::Result result) {runState(State::TakingOff, result);});
-        break;
-
-      case State::TakingOff:
-        takeoff([this](px4_ros2::Result result) {runState(State::DrawMode, result);}, 30.f);
-        break;
 
       case State::DrawMode:
         scheduleMode(
           ownedMode().id(), [this](px4_ros2::Result result) {
-            runState(State::RTL, result);
+            runState(State::WaitUntilDisarmed, result);
           });
-        break;
-
-      case State::RTL:
-        rtl([this](px4_ros2::Result result) {runState(State::WaitUntilDisarmed, result);});
         break;
 
       case State::WaitUntilDisarmed:
