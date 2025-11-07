@@ -17,7 +17,8 @@
 #include <px4_msgs/msg/trajectory_setpoint.hpp>
 #include <px4_ros2/common/setpoint_base.hpp>
 #include <px4_ros2/utils/message_version.hpp>
-
+#include <limits>
+#include <cmath>
 
 using namespace std::chrono_literals; // NOLINT
 
@@ -29,9 +30,14 @@ class DrawFlightMode : public px4_ros2::ModeBase
 {
 public:
   explicit DrawFlightMode(rclcpp::Node & node)
-  : ModeBase(node, Settings{kName}),
-    _node{node}
+  : ModeBase(node, Settings{kName}), // Pass the mode name. This will allow us to configure some other things, like replacing the FCU internal mode
+    _node{node} // Create a class that inherits from px4_ros2::ModeBase
   {
+
+    // This is where we create all objects that we want to use later on. This can be
+    // RC input, setpoint type(s), or telemetry. *this is passed as a Context to each object,
+    // which associates the object with the mode.
+
     // We'll be using trajectory and goto setpoints to control the movement of 
     // the drone.
     // Goto setpoints allow you to set a target position for the drone to move 
@@ -55,11 +61,17 @@ public:
   }
   
   ~DrawFlightMode() override = default;
-  
+
+
+
   void onActivate() override
   {
+    RCLCPP_INFO(_node.get_logger(), "DrawFlightMode Activated");
     _state = State::SettlingAtStart;
     _start_position_m = _vehicle_local_position->positionNed();
+    RCLCPP_INFO(_node.get_logger(), "Starting position: [%.2f, %.2f, %.2f], Altitude: %.2f m",
+              _start_position_m.x(), _start_position_m.y(), _start_position_m.z(),
+              -_start_position_m.z());
   }
 
   void onDeactivate() override {}
@@ -69,14 +81,17 @@ public:
   // can do our work and generate a new setpoint.
   void updateSetpoint(float dt_s) override
   {
+
     switch (_state) {
+
       case State::SettlingAtStart: {
         _goto_setpoint->update(_start_position_m);
         if (positionReached(_start_position_m)) {
           _state = State::LeftEdge;
         }
+        break;
       }
-      break;
+      
 
       // Draw the left edge of the R, starting from the South, going North
       case State::LeftEdge: {
@@ -242,28 +257,27 @@ private:
 
 // Create a class for custom flight mode executor. This implementation is almost identical
 // to one of the examples in the px4_ros2 package.
-class DrawModeExecutor : public px4_ros2::ModeExecutorBase
+class DrawModeExecutor : public px4_ros2::ModeExecutorBase // Create a class that inherits from ModeExecutorBase
 {
 public:
-  DrawModeExecutor(rclcpp::Node & node, px4_ros2::ModeBase & owned_mode)
+  DrawModeExecutor(rclcpp::Node & node, px4_ros2::ModeBase & owned_mode) // Constructor takes our custom mode that is associated with the executor and passes it to the constructor of ModeExecuteBase
   : ModeExecutorBase(node, {px4_ros2::ModeExecutorBase::Settings::Activation::ActivateImmediately}, owned_mode),
     _node(node)
   {
   }
 
+
   enum class State
   {
     Reset,
-    Arming,
-    TakingOff,
     DrawMode,
-    RTL,
     WaitUntilDisarmed,
   };
+  
 
   void onActivate() override
   {
-    runState(State::Arming, px4_ros2::Result::Success);
+    runState(State::DrawMode, px4_ros2::Result::Success); // onActivate() gets called when the executor becomes active. At this point we can start to run through our states.
   }
 
   void onDeactivate(DeactivateReason reason) override
@@ -279,40 +293,35 @@ public:
       return;
     }
 
+
     RCLCPP_DEBUG(_node.get_logger(), "Executing state %i", (int)state);
 
-    switch (state) {
+    switch (state) 
+    { // On switching to a state we call an asynchronous method from ModeExectutorBase to start the mode.
+      // These methods are passed a function that is called on completion; result will tell you if it succeeded or not.
       case State::Reset:
         break;
 
-      case State::Arming:
-        arm([this](px4_ros2::Result result) {runState(State::TakingOff, result);});
-        break;
 
-      case State::TakingOff:
-        takeoff([this](px4_ros2::Result result) {runState(State::DrawMode, result);}, 30.f);
-        break;
-
-      case State::DrawMode:
+      case State::DrawMode: // We use scheduleMode() to start the executor's "owned mode"
+        RCLCPP_DEBUG(_node.get_logger(), "SCHEDULING DrawMode..."); 
         scheduleMode(
           ownedMode().id(), [this](px4_ros2::Result result) {
-            runState(State::RTL, result);
+            runState(State::WaitUntilDisarmed, result);
           });
-        break;
+        break; 
 
-      case State::RTL:
-        rtl([this](px4_ros2::Result result) {runState(State::WaitUntilDisarmed, result);});
-        break;
 
       case State::WaitUntilDisarmed:
         waitUntilDisarmed(
           [this](px4_ros2::Result result) {
-            RCLCPP_INFO(_node.get_logger(), "All states complete (%s)", resultToString(result));
+            RCLCPP_DEBUG(_node.get_logger(), "All states complete (%s)", resultToString(result));
           });
         break;
     }
   }
 
 private:
+  rclcpp::TimerBase::SharedPtr _altitude_timer;
   rclcpp::Node & _node;
 };
